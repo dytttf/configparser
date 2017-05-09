@@ -1,4 +1,4 @@
-"""Configuration file parser.
+﻿"""Configuration file parser.
 
 A configuration file consists of sections, lead by a "[section]" header,
 and followed by "name: value" entries, with continuations and such in
@@ -994,6 +994,25 @@ class RawConfigParser(MutableMapping):
         # XXX does it break when underlying container state changed?
         return itertools.chain((self.default_section,), self._sections.keys())
 
+    def delete_blank_line(self, line_list):
+        # 统一化空行格式
+        line_list = [line if re.sub('\s', '', line) else '\n' for line in line_list]
+        # 消除连续换行
+        _last = '\n'
+        _list = []
+        for line in line_list:
+            if line != '\n':
+                _list.append(line)
+                _last = line
+            else:
+                if _last != '\n':
+                    _list.append(line)
+                    _last = line
+                else:
+                    #跳过
+                    pass
+        return _list
+
     def _read(self, fp, fpname):
         """Parse a sectioned configuration file.
 
@@ -1068,7 +1087,7 @@ class RawConfigParser(MutableMapping):
                 mo = self.SECTCRE.match(value)
                 if mo:
                     sectname = mo.group('header')
-                    self.comment_line_dict[sectname] = comment_line_cache
+                    self.comment_line_dict[sectname] = self.delete_blank_line(comment_line_cache)
                     comment_line_cache = []
                     if sectname in self._sections:
                         if self._strict and sectname in elements_added:
@@ -1096,7 +1115,7 @@ class RawConfigParser(MutableMapping):
                         if not optname:
                             e = self._handle_error(e, fpname, lineno, line)
                         optname = self.optionxform(optname.rstrip())
-                        self.comment_line_dict["%s.%s"%(sectname, optname)] = comment_line_cache
+                        self.comment_line_dict["%s.%s"%(sectname, optname)] = self.delete_blank_line(comment_line_cache)
                         comment_line_cache = []
                         if (self._strict and
                             (sectname, optname) in elements_added):

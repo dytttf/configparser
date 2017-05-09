@@ -262,7 +262,7 @@ class RawConfigParser:
         case-insensitive variants.
         """
         if section.lower() == "default":
-            raise ValueError('Invalid section name: %s' % section)
+            raise ValueError, 'Invalid section name: %s' % section
 
         if section in self._sections:
             raise DuplicateSectionError(section)
@@ -371,7 +371,7 @@ class RawConfigParser:
     def getboolean(self, section, option):
         v = self.get(section, option)
         if v.lower() not in self._boolean_states:
-            raise ValueError('Not a boolean: %s' % v)
+            raise ValueError, 'Not a boolean: %s' % v
         return self._boolean_states[v.lower()]
 
     def optionxform(self, optionstr):
@@ -479,6 +479,25 @@ class RawConfigParser:
                                               # space/tab
         r'(?P<value>.*))?$'                   # everything up to eol
         )
+    
+    def delete_blank_line(self, line_list):
+        # 统一化空行格式
+        line_list = [line if re.sub('\s', '', line) else '\n' for line in line_list]
+        # 消除连续换行
+        _last = '\n'
+        _list = []
+        for line in line_list:
+            if line != '\n':
+                _list.append(line)
+                _last = line
+            else:
+                if _last != '\n':
+                    _list.append(line)
+                    _last = line
+                else:
+                    #跳过
+                    pass
+        return _list
 
     def _read(self, fp, fpname):
         """Parse a sectioned setup file.
@@ -519,7 +538,7 @@ class RawConfigParser:
                 mo = self.SECTCRE.match(line)
                 if mo:
                     sectname = mo.group('header')
-                    self.comment_line_dict[sectname] = comment_line_cache
+                    self.comment_line_dict[sectname] = self.delete_blank_line(comment_line_cache)
                     comment_line_cache = []
                     if sectname in self._sections:
                         cursect = self._sections[sectname]
@@ -540,7 +559,7 @@ class RawConfigParser:
                     if mo:
                         optname, vi, optval = mo.group('option', 'vi', 'value')
                         optname = self.optionxform(optname.rstrip())
-                        self.comment_line_dict["%s.%s"%(cursect['__name__'], optname)] = comment_line_cache
+                        self.comment_line_dict["%s.%s"%(cursect['__name__'], optname)] = self.delete_blank_line(comment_line_cache)
                         comment_line_cache = []                        
                         # This check is fine because the OPTCRE cannot
                         # match if it would set optval to None
@@ -690,7 +709,7 @@ class ConfigParser(RawConfigParser):
                 value = self._KEYCRE.sub(self._interpolation_replace, value)
                 try:
                     value = value % vars
-                except KeyError as e:
+                except KeyError, e:
                     raise InterpolationMissingOptionError(
                         option, section, rawval, e.args[0])
             else:
